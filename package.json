@@ -2,7 +2,7 @@
   "name": "push-for-peace",
   "displayName": "Push for Peace",
   "description": "A Garmin-powered local Git push gate.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "local-prototypes",
   "engines": {
     "vscode": "^1.85.0"
