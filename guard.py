@@ -1,6 +1,6 @@
 """Read the local verdict without loading credentials or calling Garmin."""
 import json
-import secrets
+import os
 import sys
 import time
 from pathlib import Path
@@ -19,10 +19,10 @@ def check(state):
     if not (type(state.get("expires")) in (int, float)
             and now < state["expires"] <= now + 1800000
             and type(state.get("allowed")) is bool):
-        return 1, "Push paused. Sync your watch and run Push for Peace: Refresh Readings."
+        return 1, "Push paused: health readings are missing, invalid, or expired. Click the Push for Peace status-bar item in VS Code to refresh and see details."
     if state["allowed"]:
         return 0, "Push approved. May your diff be small."
-    return 1, "Push paused. Please, choose peace. The branch can wait. " + secrets.choice(AFFIRMATIONS)
+    return 1, "Push paused. Please, choose peace. The branch can wait. " + AFFIRMATIONS[int.from_bytes(os.urandom(2), "big") % len(AFFIRMATIONS)]
 
 
 if __name__ == "__main__":

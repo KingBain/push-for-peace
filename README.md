@@ -61,3 +61,20 @@ it, and Disable Guard removes both owned hooks. Existing committed health data
 remains in history. Disabling embedding leaves existing commit messages under
 normal Git behavior, including when amending them. Git --no-verify bypasses
 commit-msg and therefore also bypasses trailer refresh/removal.
+
+### Reading status and Python dependencies
+
+The status bar shows heart rate (bpm) and Body Battery (%) from the most recent
+Garmin API refresh. Click it to refresh; hover for sample timestamps and push
+eligibility. Missing or expired values display a dash. These are cached readings,
+not a live connection to the watch. Values expire after 30 minutes, even when a
+background refresh fails. Refresh messages distinguish missing, unreadable,
+stale, and future-dated samples rather than assuming the watch has not synced.
+Health details stay in the local status UI and verdict cache; credentials and raw
+API responses are not logged.
+
+Hooks require Python 3.8+ and its standard library in the environment running Git
+(including the dev container). Enabling either hook now checks those dependencies
+first. The guard no longer imports `secrets` to select affirmations. On
+Ubuntu/Debian, install `python3` and `libpython3-stdlib` in the container image to
+make the dependencies survive rebuilds.

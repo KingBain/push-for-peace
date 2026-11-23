@@ -16,6 +16,34 @@ exports.activate = async context => {
 
   const secret = 'garmin.personalApiKey';
   const verdict = path.join(home, 'verdict.json');
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+  status.name = 'Push for Peace';
+  status.command = 'pushForPeace.refresh';
+  context.subscriptions.push(status);
+  let current, problem = 'Connect Garmin to load readings.';
+  function renderStatus() {
+    const {describe} = require('./garmin');
+    const now = Date.now();
+    const fresh = reading => reading?.status === 'fresh' && now - reading.at < 1800000;
+    const hr = current?.diagnostics?.hr, bb = current?.diagnostics?.bb;
+    status.text = '$(heart) ' + (fresh(hr) ? hr.value + ' bpm' : 'HR —') +
+      '  $(battery) ' + (fresh(bb) ? bb.value + '%' : 'BB —');
+    status.tooltip = 'Push for Peace\n' + (problem ||
+      describe('Heart rate', hr) + '\n' + describe('Body Battery', bb) + '\n' +
+      (current.expires > now ? (current.allowed ? 'Within configured push limits.' : 'Outside configured push limits.') : 'Push paused: fresh readings required.')) +
+      '\nClick to refresh. Readings are from Garmin, not a live watch connection.';
+    status.show();
+  }
+  renderStatus();
+  const statusTimer = setInterval(renderStatus, 30000);
+  context.subscriptions.push({dispose: () => clearInterval(statusTimer)});
+  async function checkPython() {
+    try {
+      await run(python, ['-I', '-c', 'import sys; assert sys.version_info >= (3, 8); import json, math, os, pathlib, re, subprocess, time'], {timeout: 10000});
+    } catch {
+      throw Error('Push for Peace needs Python 3.8+ with its standard library in this environment. In an Ubuntu/Debian dev container, install python3 and libpython3-stdlib with apt, then try again.');
+    }
+  }
   let pending = Promise.resolve();
   function queue(work) {
     const result = pending.then(work);
@@ -24,14 +52,16 @@ exports.activate = async context => {
   }
   async function refresh() {
     const key = await context.secrets.get(secret);
-    if (!key) throw Error('Run Connect Garmin first.');
+    if (!key) { current = undefined; problem = 'Run Connect Garmin in this VS Code environment first.'; renderStatus(); throw Error(problem); }
     try {
       const result = await require('./garmin').decision(key);
       const temporary = verdict + '.' + require('node:crypto').randomUUID();
       await fs.writeFile(temporary, JSON.stringify(result), {mode: 0o600, flag: 'wx'});
       await fs.rename(temporary, verdict);
+      current = result; problem = undefined; renderStatus();
       return result;
     } catch (error) {
+      current = undefined; problem = error.message; renderStatus();
       await fs.rm(verdict, {force: true});
       throw error;
     }
@@ -61,16 +91,20 @@ exports.activate = async context => {
     }
     if (action === 'refresh') {
       const result = await refresh();
-      vscode.window.showInformationMessage(result.expires ? 'Garmin readings refreshed.' :
-        'Connected. Sync your watch to get recent readings.');
+      const details = require('./garmin');
+      const message = details.describe('Heart rate', result.diagnostics.hr) + '; ' + details.describe('Body Battery', result.diagnostics.bb);
+      if (result.expires) vscode.window.showInformationMessage('Garmin readings refreshed. ' + message);
+      else vscode.window.showWarningMessage('Garmin responded, but push protection needs both readings less than 30 minutes old. ' + message);
       return;
     }
     if (action === 'disconnect') {
       await context.secrets.delete(secret);
       await fs.rm(verdict, {force: true});
+      current = undefined; problem = 'Garmin disconnected.'; renderStatus();
       vscode.window.showInformationMessage('Local key removed. You can also revoke it in Garmin Connect.');
       return;
     }
+    if (['enable', 'enableEmbedding', 'demo'].includes(action)) await checkPython();
     if (action === 'demo') {
       vscode.window.showInformationMessage((await run(python, ['-I', guard, 'demo'])).stdout.trim());
       return;

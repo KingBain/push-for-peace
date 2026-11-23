@@ -17,10 +17,20 @@ async function request(stage, endpoint, authorization, method = 'GET') {
   }
 }
 
-function latest(rows, low, high, now) {
-  return rows.filter(row => Array.isArray(row) && Number.isFinite(row[0]) &&
-    Number.isFinite(row[1]) && row[1] >= low && row[1] <= high &&
-    row[0] <= now && now - row[0] < 1800000).sort((a, b) => b[0] - a[0])[0];
+function reading(rows, low, high, now) {
+  const valid = rows.filter(row => Array.isArray(row) && Number.isFinite(row[0]) &&
+    Number.isFinite(row[1]) && row[1] >= low && row[1] <= high)
+    .sort((a, b) => b[0] - a[0]);
+  const row = valid.find(row => row[0] <= now) || valid[0];
+  if (!row) return {status: rows.length ? 'unreadable' : 'missing'};
+  return {value: row[1], at: row[0], status: row[0] > now ? 'future timestamp' :
+    now - row[0] >= 1800000 ? 'stale' : 'fresh'};
+}
+
+function describe(label, reading, now = Date.now()) {
+  if (!reading) return label + ': unavailable';
+  const status = reading.status === 'fresh' && now - reading.at >= 1800000 ? 'stale' : reading.status;
+  return label + ': ' + status + (reading.at ? ' (last sample ' + new Date(reading.at).toISOString() + ')' : '');
 }
 
 async function decision(key) {
@@ -44,10 +54,11 @@ async function decision(key) {
     hrs.push(...(hr.heartRateValues || []));
     for (const record of bb) batteries.push(...(record.bodyBatteryValuesArray || []));
   }
-  const hr = latest(hrs, 1, 300, now), bb = latest(batteries, 0, 100, now);
-  if (!hr || !bb) return {};
-  return { allowed: hr[1] >= 50 && hr[1] <= 110 && bb[1] >= 25,
-    expires: Math.min(hr[0], bb[0]) + 1800000,
-    health: { hr: hr[1], bb: bb[1], hrAt: hr[0], bbAt: bb[0] } };
+  const hr = reading(hrs, 1, 300, now), bb = reading(batteries, 0, 100, now);
+  const diagnostics = {hr, bb};
+  if (hr.status !== "fresh" || bb.status !== "fresh") return {diagnostics};
+  return { diagnostics, allowed: hr.value >= 50 && hr.value <= 110 && bb.value >= 25,
+    expires: Math.min(hr.at, bb.at) + 1800000,
+    health: { hr: hr.value, bb: bb.value, hrAt: hr.at, bbAt: bb.at } };
 }
-module.exports = { decision };
+module.exports = { decision, reading, describe };
