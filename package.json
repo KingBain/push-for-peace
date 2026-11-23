@@ -1,0 +1,58 @@
+{
+  "name": "push-for-peace",
+  "displayName": "Push for Peace",
+  "description": "A Garmin-powered local Git push gate.",
+  "version": "0.2.1",
+  "publisher": "local-prototypes",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./index.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "pushForPeace.connect",
+        "title": "Push for Peace: Connect Garmin"
+      },
+      {
+        "command": "pushForPeace.enable",
+        "title": "Push for Peace: Enable Guard"
+      },
+      {
+        "command": "pushForPeace.disable",
+        "title": "Push for Peace: Disable Guard"
+      },
+      {
+        "command": "pushForPeace.demo",
+        "title": "Push for Peace: Demo"
+      },
+      {
+        "command": "pushForPeace.refresh",
+        "title": "Push for Peace: Refresh Readings"
+      },
+      {
+        "command": "pushForPeace.disconnect",
+        "title": "Push for Peace: Disconnect Garmin"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KingBain/push-for-peace.git"
+  },
+  "scripts": {
+    "test": "node --check index.js && node --test test/*.test.js && python3 -m unittest discover -s test",
+    "package": "python3 scripts/package.py"
+  }
+}
