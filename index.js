@@ -10,6 +10,8 @@ exports.activate = async context => {
   const home = context.globalStorageUri.fsPath;
   const guard = path.join(home, 'guard.py');
   const python = 'python3';
+  const embed = path.join(home, 'embed.py');
+  const embedHook = '#!/bin/sh\n# Push for Peace health embedding\nexec ' + quote(python) + ' -I ' + quote(embed) + ' "$1"\n';
   const hook = '#!/bin/sh\n# Push for Peace\nexec ' + quote(python) + ' -I ' + quote(guard) + ' check\n';
 
   const secret = 'garmin.personalApiKey';
@@ -39,6 +41,9 @@ exports.activate = async context => {
   const temp = guard + '.' + require('node:crypto').randomUUID();
   await fs.copyFile(context.asAbsolutePath('guard.py'), temp);
   await fs.rename(temp, guard);
+  const embedTemp = embed + '.' + require('node:crypto').randomUUID();
+  await fs.copyFile(context.asAbsolutePath('embed.py'), embedTemp);
+  await fs.rename(embedTemp, embed);
   await fs.rm(path.join(home, 'session'), {recursive: true, force: true});
   const background = () => queue(refresh).catch(() => {});
   background();
@@ -79,6 +84,33 @@ exports.activate = async context => {
       throw Error('This repository uses a custom hooks directory. Its hooks are managed separately.');
     } catch (error) { if (error.code !== 1) throw error; }
     const target = await git(['rev-parse', '--path-format=absolute', '--git-path', 'hooks/pre-push']);
+    const messageHook = await git(['rev-parse', '--path-format=absolute', '--git-path', 'hooks/commit-msg']);
+    if (action === 'enableEmbedding') {
+      const legacy = hook.replace(quote(python), quote(path.join(home, 'venv/bin/python')));
+      const installed = await fs.readFile(target, 'utf8').catch(() => '');
+      if (![hook, legacy].includes(installed)) throw Error('Enable the Push for Peace guard in this repository first.');
+      const consent = await vscode.window.showWarningMessage(
+        'Embed heart rate and Body Battery in commits for this repository? Anyone with repository access can read these health stats. They become part of Git history and may become public if the repository becomes public. Disabling embedding does not remove data from existing commits.',
+        {modal: true}, 'Enable Health Embedding');
+      if (consent !== 'Enable Health Embedding') return;
+      await fs.writeFile(messageHook, embedHook, {flag: 'wx', mode: 0o755}).catch(error => {
+        if (error.code === 'EEXIST') throw Error('A commit-msg hook already exists. Health embedding was not enabled.');
+        throw error;
+      });
+      await refresh().catch(() => {});
+      vscode.window.showInformationMessage('Health embedding enabled for this repository. Missing or stale readings are omitted.');
+      return;
+    }
+    if (action === 'disableEmbedding') {
+      const installed = await fs.readFile(messageHook, 'utf8').catch(error => {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      });
+      if (installed !== null && installed !== embedHook) throw Error('The commit-msg hook belongs to another tool or was edited.');
+      if (installed !== null) await fs.unlink(messageHook);
+      vscode.window.showInformationMessage('Health embedding disabled for this repository.');
+      return;
+    }
     if (action === 'enable') {
       if (!await context.secrets.get(secret)) throw Error('Run Connect Garmin first.');
       await fs.mkdir(path.dirname(target), { recursive: true });
@@ -90,10 +122,12 @@ exports.activate = async context => {
       const legacy = hook.replace(quote(python), quote(path.join(home, 'venv/bin/python')));
       if (![hook, legacy].includes(await fs.readFile(target, 'utf8'))) throw Error('This hook belongs to another tool or was edited. Kept it in place.');
       await fs.unlink(target);
+      const installed = await fs.readFile(messageHook, 'utf8').catch(() => null);
+      if (installed === embedHook) await fs.unlink(messageHook);
     }
     vscode.window.showInformationMessage('Push for Peace guard ' + (action === 'enable' ? 'enabled.' : 'removed.'));
   }
-  for (const action of ['connect', 'enable', 'disable', 'demo', 'disconnect', 'refresh']) {
+  for (const action of ['connect', 'enable', 'disable', 'demo', 'disconnect', 'refresh', 'enableEmbedding', 'disableEmbedding']) {
     context.subscriptions.push(vscode.commands.registerCommand('pushForPeace.' + action,
       () => queue(() => command(action)).catch(error => vscode.window.showErrorMessage(error.message))));
   }

@@ -47,6 +47,7 @@ async function decision(key) {
   const hr = latest(hrs, 1, 300, now), bb = latest(batteries, 0, 100, now);
   if (!hr || !bb) return {};
   return { allowed: hr[1] >= 50 && hr[1] <= 110 && bb[1] >= 25,
-    expires: Math.min(hr[0], bb[0]) + 1800000 };
+    expires: Math.min(hr[0], bb[0]) + 1800000,
+    health: { hr: hr[1], bb: bb[1], hrAt: hr[0], bbAt: bb[0] } };
 }
 module.exports = { decision };

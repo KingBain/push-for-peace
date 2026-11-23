@@ -45,6 +45,14 @@
       {
         "command": "pushForPeace.checkForUpdates",
         "title": "Push for Peace: Check for Updates"
+      },
+      {
+        "command": "pushForPeace.enableEmbedding",
+        "title": "Push for Peace: Enable Health Embedding"
+      },
+      {
+        "command": "pushForPeace.disableEmbedding",
+        "title": "Push for Peace: Disable Health Embedding"
       }
     ],
     "configuration": {
