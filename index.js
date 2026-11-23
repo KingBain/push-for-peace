@@ -27,7 +27,7 @@ exports.activate = async context => {
     const fresh = reading => reading?.status === 'fresh' && now - reading.at < 1800000;
     const hr = current?.diagnostics?.hr, bb = current?.diagnostics?.bb;
     status.text = '$(heart) ' + (fresh(hr) ? hr.value + ' bpm' : 'HR —') +
-      '  $(battery) ' + (fresh(bb) ? bb.value + '%' : 'BB —');
+      '  $(person) ' + (fresh(bb) ? bb.value + '%' : 'BB —');
     status.tooltip = 'Push for Peace\n' + (problem ||
       describe('Heart rate', hr) + '\n' + describe('Body Battery', bb) + '\n' +
       (current.expires > now ? (current.allowed ? 'Within configured push limits.' : 'Outside configured push limits.') : 'Push paused: fresh readings required.')) +
