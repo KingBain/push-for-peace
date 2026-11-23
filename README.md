@@ -14,7 +14,16 @@ The publisher identifier remains local-prototypes so existing installations
 retain their stored key and hook paths.
 
 Push source to KingBain/push-for-peace on main. Pull requests and main pushes
-run the checks. To publish version 0.2.1, push tag v0.2.1.
-The tag must match package.json. Subsequent releases require incrementing
-package.json and pushing its corresponding tag. GitHub Releases hosts the VSIX.
+run the checks.
+
+To publish through GitHub, open Actions, select Release VSIX, and click Run
+workflow. Select main and enter a version such as 1.0.1. The workflow updates
+package.json, runs tests, packages the VSIX, and pushes the version commit and
+matching tag together. It then uploads the VSIX and publishes the GitHub Release.
+
+Retry the same version if a run fails after creating the tag. The workflow
+reuses that tagged commit and resumes a draft release. An existing tag with a
+different package version is rejected. The earlier v1.0.0 tag points to package
+version 0.2.1, so use a new version such as 1.0.1.
+
 Live Garmin authentication and full VS Code integration still require local testing.

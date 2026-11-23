@@ -1,28 +1,98 @@
 name: Release VSIX
+
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, for example 1.0.1 (optional v prefix)'
+        required: true
+        type: string
+
 permissions:
   contents: read
+
+concurrency:
+  group: release-vsix
+  cancel-in-progress: false
+
 jobs:
   release:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION_INPUT: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - name: Check version tag
+
+      - name: Prepare release version
+        id: version
         run: |
-          version=$(node -p "require('./package.json').version")
-          test "$GITHUB_REF_NAME" = "v$version"
+          version="${RELEASE_VERSION_INPUT#v}"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Enter a version such as 1.0.1."
+            exit 1
+          fi
+          tag="v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            git merge-base --is-ancestor "$tag" origin/main
+            git checkout --detach "$tag"
+            actual=$(node -p "require('./package.json').version")
+            if [[ "$actual" != "$version" ]]; then
+              echo "::error::Tag $tag already exists with package version $actual. Choose a new version."
+              exit 1
+            fi
+            echo "existing=true" >> "$GITHUB_OUTPUT"
+          else
+            npm version "$version" --no-git-tag-version --allow-same-version
+            echo "existing=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - run: npm test
       - run: npm run package
+
+      - name: Commit version and create tag
+        if: steps.version.outputs.existing == 'false'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: release $RELEASE_TAG"
+          fi
+          git tag "$RELEASE_TAG"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push --atomic origin HEAD:refs/heads/main "refs/tags/$RELEASE_TAG"
+
       - name: Publish release
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.vsix --verify-tag --generate-notes
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          releases=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases")
+          state=$(jq -r --arg tag "$RELEASE_TAG" '.[] | select(.tag_name == $tag) | if .draft then "draft" else "published" end' <<< "$releases")
+          if [[ "$state" == "published" ]]; then
+            gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fx "push-for-peace-$RELEASE_VERSION.vsix"
+            echo "Release $RELEASE_TAG is already published."
+            exit 0
+          fi
+          if [[ -z "$state" ]]; then
+            gh release create "$RELEASE_TAG" --verify-tag --generate-notes --draft
+          fi
+          gh release upload "$RELEASE_TAG" "dist/push-for-peace-$RELEASE_VERSION.vsix" --clobber
+          gh release edit "$RELEASE_TAG" --draft=false
