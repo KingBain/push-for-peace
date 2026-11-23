@@ -17,13 +17,25 @@ Push source to KingBain/push-for-peace on main. Pull requests and main pushes
 run the checks.
 
 To publish through GitHub, open Actions, select Release VSIX, and click Run
-workflow. Select main and enter a version such as 1.0.1. The workflow updates
-package.json, runs tests, packages the VSIX, and pushes the version commit and
-matching tag together. It then uploads the VSIX and publishes the GitHub Release.
+workflow on main. Choose patch (default), minor, or major. For version 0.2.1,
+these produce 0.2.2, 0.3.0, or 1.0.0 respectively. The workflow updates
+package.json, runs tests, packages the VSIX, creates the matching tag, and
+publishes a GitHub Release. An optional exact version overrides the increment.
 
-Retry the same version if a run fails after creating the tag. The workflow
-reuses that tagged commit and resumes a draft release. An existing tag with a
-different package version is rejected. The earlier v1.0.0 tag points to package
-version 0.2.1, so use a new version such as 1.0.1.
+Re-running the same workflow run resumes its tagged version. To resume from
+a new workflow run, enter that version in the optional override field.
 
-Live Garmin authentication and full VS Code integration still require local testing.
+## Updates
+
+The extension checks the latest stable GitHub release once per day and offers
+Install Update. You can also run Push for Peace: Check for Updates. Downloads
+are checked against GitHub's SHA-256 asset digest before VS Code installs them.
+Reload when prompted. Automatic checks can be disabled in the
+pushForPeace.checkForUpdates setting.
+
+Install the first release containing this updater manually. Later releases can
+be installed from its notification. In remote windows (SSH, containers, WSL),
+the notification opens the release download page for manual installation into
+that window.
+
+Live Garmin authentication and full VS Code installation still require local testing.

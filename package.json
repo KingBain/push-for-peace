@@ -41,8 +41,23 @@
       {
         "command": "pushForPeace.disconnect",
         "title": "Push for Peace: Disconnect Garmin"
+      },
+      {
+        "command": "pushForPeace.checkForUpdates",
+        "title": "Push for Peace: Check for Updates"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Push for Peace",
+      "properties": {
+        "pushForPeace.checkForUpdates": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Check GitHub for updates once per day. Installation requires your confirmation."
+        }
+      }
+    }
   },
   "activationEvents": [
     "onStartupFinished"

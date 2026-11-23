@@ -6,6 +6,7 @@ const run = promisify(require('node:child_process').execFile);
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
 
 exports.activate = async context => {
+  require('./updates').activate(context, vscode);
   const home = context.globalStorageUri.fsPath;
   const guard = path.join(home, 'guard.py');
   const python = 'python3';
