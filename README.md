@@ -62,5 +62,6 @@ them too. Other tools' hooks and edited hooks are left alone. After a VS Code or
 server update removes its old runtime, reload the extension to refresh the launcher.
 Hooks can run with VS Code closed while that runtime and fresh cache remain available.
 
-Development tests use `npm test`. VSIX packaging still uses Python's standard-library
-ZIP writer (`npm run package`); Python is a build-time dependency only.
+Development tests use `npm test`. The release and check workflows build the VSIX
+with inline Bash and `zip`, using the version from `package.json`. Python is no
+longer required for packaging. Run the Release VSIX workflow to publish a build.
