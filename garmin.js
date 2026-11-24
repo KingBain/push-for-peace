@@ -24,12 +24,12 @@ function reading(rows, low, high, now) {
   const row = valid.find(row => row[0] <= now) || valid[0];
   if (!row) return {status: rows.length ? 'unreadable' : 'missing'};
   return {value: row[1], at: row[0], status: row[0] > now ? 'future timestamp' :
-    now - row[0] >= 1800000 ? 'stale' : 'fresh'};
+    now - row[0] >= 3600000 ? 'stale' : 'fresh'};
 }
 
 function describe(label, reading, now = Date.now()) {
   if (!reading) return label + ': unavailable';
-  const status = reading.status === 'fresh' && now - reading.at >= 1800000 ? 'stale' : reading.status;
+  const status = reading.status === 'fresh' && now - reading.at >= 3600000 ? 'stale' : reading.status;
   return label + ': ' + status + (reading.at ? ' (last sample ' + new Date(reading.at).toISOString() + ')' : '');
 }
 
@@ -37,7 +37,7 @@ async function decision(key) {
   const token = await request('Garmin key exchange', '/personalapitoken-service/personal-api/personal-api-key/token', 'ApiKey ' + key, 'POST');
   if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) throw Error('Garmin key exchange returned an unexpected token format.');
   const now = Date.now();
-  const days = [...new Set([now, now - 1800000].map(t => new Date(t).toLocaleDateString('en-CA')))];
+  const days = [...new Set([now, now - 3600000].map(t => new Date(t).toLocaleDateString('en-CA')))];
   const hrs = [], batteries = [];
   for (const date of days) {
     const get = (stage, endpoint) => request(stage, '/wellness-service/wellness/' + endpoint, 'Bearer ' + token);
@@ -58,7 +58,7 @@ async function decision(key) {
   const diagnostics = {hr, bb};
   if (hr.status !== "fresh" || bb.status !== "fresh") return {diagnostics};
   return { diagnostics, allowed: hr.value >= 50 && hr.value <= 110 && bb.value >= 25,
-    expires: Math.min(hr.at, bb.at) + 1800000,
+    expires: Math.min(hr.at, bb.at) + 3600000,
     health: { hr: hr.value, bb: bb.value, hrAt: hr.at, bbAt: bb.at } };
 }
 module.exports = { decision, reading, describe };

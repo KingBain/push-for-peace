@@ -19,7 +19,7 @@ def payload(state, now):
         stamp = health.get(name + "At")
         if (type(value) not in (int, float) or not low <= value <= high
                 or type(stamp) not in (int, float) or not math.isfinite(stamp)
-                or not 0 <= now - stamp < 1800000):
+                or not 0 <= now - stamp < 3600000):
             return None
     return {"v": 1, "hr": health["hr"], "bb": health["bb"]}
 

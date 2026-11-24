@@ -17,7 +17,7 @@ class EmbedTests(unittest.TestCase):
         good = {"health": {"hr": 72, "bb": 68, "hrAt": now, "bbAt": now}}
         self.assertEqual(payload(good, now), {"v": 1, "hr": 72, "bb": 68})
         self.assertIsNone(payload({}, now))
-        for field, value in [("hr", None), ("bb", None), ("hrAt", now-1800000),
+        for field, value in [("hr", None), ("bb", None), ("hrAt", now-3600000),
                              ("bbAt", now+1), ("hr", True)]:
             changed = {"health": dict(good["health"], **{field: value})}
             self.assertIsNone(payload(changed, now))

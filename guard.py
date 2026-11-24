@@ -17,7 +17,7 @@ AFFIRMATIONS = (
 def check(state):
     now = time.time() * 1000
     if not (type(state.get("expires")) in (int, float)
-            and now < state["expires"] <= now + 1800000
+            and now < state["expires"] <= now + 3600000
             and type(state.get("allowed")) is bool):
         return 1, "Push paused: health readings are missing, invalid, or expired. Click the Push for Peace status-bar item in VS Code to refresh and see details."
     if state["allowed"]:

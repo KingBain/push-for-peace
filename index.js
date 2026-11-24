@@ -24,7 +24,7 @@ exports.activate = async context => {
   function renderStatus() {
     const {describe} = require('./garmin');
     const now = Date.now();
-    const fresh = reading => reading?.status === 'fresh' && now - reading.at < 1800000;
+    const fresh = reading => reading?.status === 'fresh' && now - reading.at < 3600000;
     const hr = current?.diagnostics?.hr, bb = current?.diagnostics?.bb;
     status.text = '$(heart) ' + (fresh(hr) ? hr.value + ' bpm' : 'HR —') +
       '  $(person) ' + (fresh(bb) ? bb.value + '%' : 'BB —');
@@ -94,7 +94,7 @@ exports.activate = async context => {
       const details = require('./garmin');
       const message = details.describe('Heart rate', result.diagnostics.hr) + '; ' + details.describe('Body Battery', result.diagnostics.bb);
       if (result.expires) vscode.window.showInformationMessage('Garmin readings refreshed. ' + message);
-      else vscode.window.showWarningMessage('Garmin responded, but push protection needs both readings less than 30 minutes old. ' + message);
+      else vscode.window.showWarningMessage('Garmin responded, but push protection needs both readings less than 60 minutes old. ' + message);
       return;
     }
     if (action === 'disconnect') {
