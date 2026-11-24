@@ -1,89 +1,59 @@
 # Push for Peace
 
-In a trusted VS Code window on macOS, Linux or WSL, run Connect Garmin and paste an expiring Personal API key created on Garmin Connect Web. Requires Git and python3. Run Enable Guard in each clone. Existing pre-push hooks are respected. Run Disable Guard before uninstalling.
+**Take a breath before you push.**
 
-Only the extension retrieves the key from VS Code SecretStorage. It exchanges it at Garmin for an in-memory bearer token. Every five minutes while VS Code is running, it reads synced heart rate and Body Battery and saves a local allow/block verdict, expiry, and latest health readings. The hook reads that verdict even outside VS Code. Once it expires, pushes pause until the extension refreshes. Refresh Readings forces a check. The inclusive joke thresholds are 50–110 bpm and Body Battery of at least 25. Each sample must be less than 60 minutes old.
+Push for Peace is a VS Code extension that uses Garmin health data to encourage calmer Git pushes. It checks your heart rate and Body Battery before allowing a push and can optionally embed those readings in your commit messages.
 
-Disconnect Garmin forgets the local key and verdict. Delete the key in Garmin Connect to revoke it. During upgrade the extension deletes its own v0.1 session folder and replaces its old helper, including for previously installed hooks. Local deletion does not revoke a remote session. Source is under extension/ inside the VSIX archive.
+> Screenshot placeholder: VS Code status bar showing heart rate and Body Battery.
 
-## Development and releases
+## Features
 
-Use Node from .nvmrc and Python 3. Run npm test, then npm run package.
-The archive is written to dist/. This project has no npm package dependencies.
-The publisher identifier remains local-prototypes so existing installations
-retain their stored key and hook paths.
+- **Push guard:** pauses Git pushes when heart rate is outside 50–110 bpm, Body Battery is below 25, or readings are unavailable or stale.
+- **Status bar:** displays cached Garmin readings and push eligibility.
+- **Background refresh:** checks Garmin every five minutes without calling the API during Git commits or pushes. Readings expire after 60 minutes.
+- **Optional commit trailers:** adds health readings to Git history when explicitly enabled.
+- **Update notifications:** checks GitHub for new stable releases.
 
-Push source to KingBain/push-for-peace on main. Pull requests and main pushes
-run the checks.
+> Screenshot placeholder: blocked Git push notification.
 
-To publish through GitHub, open Actions, select Release VSIX, and click Run
-workflow on main. Choose patch (default), minor, or major. For version 0.2.1,
-these produce 0.2.2, 0.3.0, or 1.0.0 respectively. The workflow updates
-package.json, runs tests, packages the VSIX, creates the matching tag, and
-publishes a GitHub Release. An optional exact version overrides the increment.
+## Getting started
 
-Re-running the same workflow run resumes its tagged version. To resume from
-a new workflow run, enter that version in the optional override field.
+Requires VS Code 1.85+, Git, Python 3.8+ with its standard library, and a Garmin Connect account. Supported on macOS, Linux and WSL.
 
-## Updates
+1. Download the latest VSIX from [GitHub Releases](https://github.com/KingBain/push-for-peace/releases/latest).
+2. In VS Code, run **Extensions: Install from VSIX...** and select the downloaded file.
+3. Open a trusted workspace and run **Push for Peace: Connect Garmin** from the Command Palette. Enter an expiring Personal API key created in Garmin Connect Web.
+4. Run **Push for Peace: Enable Guard** in each Git clone you want to protect.
 
-The extension checks the latest stable GitHub release once per day and offers
-Install Update. You can also run Push for Peace: Check for Updates. Downloads
-are checked against GitHub's SHA-256 asset digest before VS Code installs them.
-Reload when prompted. Automatic checks can be disabled in the
-pushForPeace.checkForUpdates setting.
+Click the status bar to refresh readings manually, or hover to see sample timestamps. Run **Push for Peace: Disable Guard** before uninstalling.
 
-Install the first release containing this updater manually. Later releases can
-be installed from its notification. In remote windows (SSH, containers, WSL),
-the notification opens the release download page for manual installation into
-that window.
+> Screenshot placeholder: Garmin connection and guard setup.
 
-Live Garmin authentication and full VS Code installation still require local testing.
+## Optional health embedding
 
+Run **Push for Peace: Enable Health Embedding** in a repository with the guard enabled to add cached readings to your commits:
 
-## Optional health trailers
+```text
+Push-For-Peace: {"v":1,"hr":72,"bb":68}
+```
 
-Run Push for Peace: Enable Health Embedding in a repository with its guard enabled.
-The confirmation explains that health data enters Git history, can be read by
-anyone with repository access, and may become public if the repository becomes
-public. Consent is local to that clone (shared by linked worktrees). Existing
-commit-msg hooks must be handled before enabling.
+> Screenshot placeholder: Git commit showing its health trailer.
 
-Commits get a trailer such as `Push-For-Peace: {"v":1,"hr":72,"bb":68}`.
-Heart rate is in bpm and Body Battery is its 0–100 score. On amend, the managed
-trailer is replaced with the latest cached readings. If either reading is missing,
-invalid, or 60 minutes old, the managed trailer is removed and nothing is appended.
-Older caches without health readings are treated as unavailable. The extension
-refreshes its cache every five minutes; Refresh Readings forces an immediate fetch.
+Health embedding is opt-in per clone. Anyone with access to the repository can read committed health data. Disabling embedding does not remove existing data from Git history.
 
-The hook runs for terminal and VS Code commits. Disable Health Embedding removes
-it, and Disable Guard removes both owned hooks. Existing committed health data
-remains in history. Disabling embedding leaves existing commit messages under
-normal Git behavior, including when amending them. Git --no-verify bypasses
-commit-msg and therefore also bypasses trailer refresh/removal.
+## Privacy and limitations
 
-### Reading status and Python dependencies
+Your Garmin key is stored in VS Code SecretStorage. Readings and push decisions are cached locally. Run **Push for Peace: Disconnect Garmin** to clear the local key and cache; revoke the key in Garmin Connect separately.
 
-The status bar shows heart rate (bpm) and Body Battery (%) from the most recent
-Garmin API refresh. Click it to refresh; hover for sample timestamps and push
-eligibility. Missing or expired values display a dash. These are cached readings,
-not a live connection to the watch. Values expire after 60 minutes, even when a
-background refresh fails. Refresh messages distinguish missing, unreadable,
-stale, and future-dated samples rather than assuming the watch has not synced.
-Health details stay in the local status UI and verdict cache; credentials and raw
-API responses are not logged.
+Readings depend on watch synchronization with Garmin Connect. This is a playful productivity tool, not a medical assessment or a security control. Git hooks can be bypassed.
 
-Hooks require Python 3.8+ and its standard library in the environment running Git
-(including the dev container). Enabling either hook now checks those dependencies
-first. The guard no longer imports `secrets` to select affirmations. On
-Ubuntu/Debian, install `python3` and `libpython3-stdlib` in the container image to
-make the dependencies survive rebuilds.
+## Development
 
-### Display timezone
+Use the Node version in `.nvmrc` and Python 3.
 
-Sample timestamps in notifications and the status-bar tooltip use localized dates
-and times with a timezone label. By default this follows the extension host system
-timezone. For a dev container or remote host, set `pushForPeace.displayTimeZone`
-in VS Code User Settings to your timezone, for example `America/Toronto`.
-Daylight saving time is handled automatically. This affects display only; sample
-ages, the 60-minute freshness limit, and stored timestamps remain unchanged.
+```sh
+npm test
+npm run package
+```
+
+The VSIX is generated in `dist/`. Releases are published through the **Release VSIX** GitHub Actions workflow. To check for updates manually, run **Push for Peace: Check for Updates**. Remote VS Code windows require manual update installation.
