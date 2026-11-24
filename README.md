@@ -6,7 +6,7 @@ Push for Peace is a VS Code extension that integrates Garmin health metrics into
 
 Not every push needs to be made under stress.
 
-> **Screenshot placeholder — VS Code status bar**
+
 
 ## Features
 
