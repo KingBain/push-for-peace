@@ -81,7 +81,7 @@
     "url": "https://github.com/KingBain/push-for-peace.git"
   },
   "scripts": {
-    "test": "node --check index.js && node --test test/*.test.js && python3 -m unittest discover -s test",
+    "test": "node --check index.js && node --test test/*.test.js",
     "package": "python3 scripts/package.py"
   }
 }

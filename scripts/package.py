@@ -14,6 +14,6 @@ output.parent.mkdir(exist_ok=True)
 with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
     archive.writestr("extension.vsixmanifest", ET.tostring(manifest))
     archive.write(root / "scripts/content-types.xml", "[Content_Types].xml")
-    for name in ("package.json", "index.js", "garmin.js", "updates.js", "guard.py", "embed.py", "README.md"):
+    for name in ("package.json", "index.js", "garmin.js", "updates.js", "hooks.js", "hook-install.js", "README.md"):
         archive.write(root / name, "extension/" + name)
 print(output)
