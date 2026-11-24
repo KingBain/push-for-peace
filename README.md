@@ -35,7 +35,9 @@ Optionally capture a snapshot of your well-being alongside your code changes.
 
 Enable this feature using **Push for Peace: Enable Health Embedding**.
 
-> **Screenshot placeholder — Git commit with embedded health metrics**
+<img width="869" height="120" alt="image" src="https://github.com/user-attachments/assets/2f5bcdef-12df-4a41-b428-a8c57339e13b" />
+<img width="868" height="141" alt="image" src="https://github.com/user-attachments/assets/de106a3b-cd4e-408c-a296-2dfd232be44f" />
+
 
 ## Privacy
 
