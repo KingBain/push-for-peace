@@ -27,10 +27,23 @@ function reading(rows, low, high, now) {
     now - row[0] >= 3600000 ? 'stale' : 'fresh'};
 }
 
-function describe(label, reading, now = Date.now()) {
+function formatTimestamp(timestamp, {locale, timeZone} = {}) {
+  const options = {year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short'};
+  if (timeZone?.trim()) options.timeZone = timeZone.trim();
+  try {
+    return new Intl.DateTimeFormat(locale || undefined, options).format(timestamp);
+  } catch {
+    delete options.timeZone;
+    return new Intl.DateTimeFormat(undefined, options).format(timestamp) +
+      ' (system timezone; check Push for Peace display timezone setting)';
+  }
+}
+
+function describe(label, reading, now = Date.now(), display = {}) {
   if (!reading) return label + ': unavailable';
   const status = reading.status === 'fresh' && now - reading.at >= 3600000 ? 'stale' : reading.status;
-  return label + ': ' + status + (reading.at ? ' (last sample ' + new Date(reading.at).toISOString() + ')' : '');
+  return label + ': ' + status + (reading.at ? ' (last sample ' + formatTimestamp(reading.at, display) + ')' : '');
 }
 
 async function decision(key) {
@@ -61,4 +74,4 @@ async function decision(key) {
     expires: Math.min(hr.at, bb.at) + 3600000,
     health: { hr: hr.value, bb: bb.value, hrAt: hr.at, bbAt: bb.at } };
 }
-module.exports = { decision, reading, describe };
+module.exports = { decision, reading, describe, formatTimestamp };

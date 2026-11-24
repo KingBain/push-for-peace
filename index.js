@@ -21,6 +21,10 @@ exports.activate = async context => {
   status.command = 'pushForPeace.refresh';
   context.subscriptions.push(status);
   let current, problem = 'Connect Garmin to load readings.';
+  const displayOptions = () => ({
+    locale: vscode.env.language,
+    timeZone: vscode.workspace.getConfiguration('pushForPeace').get('displayTimeZone', '')
+  });
   function renderStatus() {
     const {describe} = require('./garmin');
     const now = Date.now();
@@ -29,12 +33,15 @@ exports.activate = async context => {
     status.text = '$(heart) ' + (fresh(hr) ? hr.value + ' bpm' : 'HR —') +
       '  $(person) ' + (fresh(bb) ? bb.value + '%' : 'BB —');
     status.tooltip = 'Push for Peace\n' + (problem ||
-      describe('Heart rate', hr) + '\n' + describe('Body Battery', bb) + '\n' +
+      describe('Heart rate', hr, now, displayOptions()) + '\n' + describe('Body Battery', bb, now, displayOptions()) + '\n' +
       (current.expires > now ? (current.allowed ? 'Within configured push limits.' : 'Outside configured push limits.') : 'Push paused: fresh readings required.')) +
       '\nClick to refresh. Readings are from Garmin, not a live watch connection.';
     status.show();
   }
   renderStatus();
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+    if (event.affectsConfiguration('pushForPeace.displayTimeZone')) renderStatus();
+  }));
   const statusTimer = setInterval(renderStatus, 30000);
   context.subscriptions.push({dispose: () => clearInterval(statusTimer)});
   async function checkPython() {
@@ -92,7 +99,7 @@ exports.activate = async context => {
     if (action === 'refresh') {
       const result = await refresh();
       const details = require('./garmin');
-      const message = details.describe('Heart rate', result.diagnostics.hr) + '; ' + details.describe('Body Battery', result.diagnostics.bb);
+      const message = details.describe('Heart rate', result.diagnostics.hr, Date.now(), displayOptions()) + '; ' + details.describe('Body Battery', result.diagnostics.bb, Date.now(), displayOptions());
       if (result.expires) vscode.window.showInformationMessage('Garmin readings refreshed. ' + message);
       else vscode.window.showWarningMessage('Garmin responded, but push protection needs both readings less than 60 minutes old. ' + message);
       return;

@@ -43,3 +43,18 @@ test('45-minute readings remain fresh and expire at 60 minutes', () => {
   assert.equal(reading([[now - 45 * 60000, 72]], 1, 300, now).status, 'fresh');
   assert.equal(reading([[now - 60 * 60000, 72]], 1, 300, now).status, 'stale');
 });
+
+const {formatTimestamp} = require('../garmin');
+test('display timestamps use the selected timezone and daylight saving time', () => {
+  const options = {locale: 'en-US', timeZone: 'America/Toronto'};
+  assert.match(formatTimestamp(Date.parse('2026-11-24T18:58:00Z'), options), /1:58 PM EST/);
+  assert.match(formatTimestamp(Date.parse('2026-07-24T18:58:00Z'), options), /2:58 PM EDT/);
+  assert.match(formatTimestamp(Date.parse('2026-11-24T02:00:00Z'), options), /Nov 23, 2026/);
+  assert.doesNotThrow(() => formatTimestamp(Date.now(), {timeZone: 'invalid-zone'}));
+  const at = Date.parse('2026-11-24T18:58:00Z');
+  assert.match(describe('HR', {status: 'fresh', at}, at, options), /1:58 PM EST/);
+  assert.equal(formatTimestamp(at), new Intl.DateTimeFormat(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric',
+    minute: '2-digit', timeZoneName: 'short'
+  }).format(at));
+});

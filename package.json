@@ -63,6 +63,12 @@
           "default": true,
           "scope": "application",
           "description": "Check GitHub for updates once per day. Installation requires your confirmation."
+        },
+        "pushForPeace.displayTimeZone": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Timezone for displayed sample timestamps, e.g. America/Toronto. Empty uses the extension host system timezone. Set this explicitly when a dev container or remote host uses a different timezone from your computer."
         }
       }
     }

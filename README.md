@@ -78,3 +78,12 @@ Hooks require Python 3.8+ and its standard library in the environment running Gi
 first. The guard no longer imports `secrets` to select affirmations. On
 Ubuntu/Debian, install `python3` and `libpython3-stdlib` in the container image to
 make the dependencies survive rebuilds.
+
+### Display timezone
+
+Sample timestamps in notifications and the status-bar tooltip use localized dates
+and times with a timezone label. By default this follows the extension host system
+timezone. For a dev container or remote host, set `pushForPeace.displayTimeZone`
+in VS Code User Settings to your timezone, for example `America/Toronto`.
+Daylight saving time is handled automatically. This affects display only; sample
+ages, the 60-minute freshness limit, and stored timestamps remain unchanged.
