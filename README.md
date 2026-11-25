@@ -5,7 +5,7 @@
 **Better commits. Calmer developers.**
 
 <!-- listing-summary -->
-Push for Peace is a VS Code extension that integrates Garmin health metrics into your Git workflow, encouraging healthier and more mindful software development.
+See your Garmin heart rate and Body Battery in VS Code. Enable the push guard to pause Git pushes with a friendly reminder when either reading falls outside the guard’s limits.
 <!-- /listing-summary -->
 
 Not every push needs to be made under stress.
