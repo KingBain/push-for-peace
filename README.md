@@ -64,20 +64,3 @@ Garmin credentials are securely stored using VS Code SecretStorage. Health readi
 Push for Peace is an experiment in developer well-being, not a medical device or security control. Git hooks can be bypassed.
 
 **Write code. Stay healthy. Push for peace.**
-
-## Git hook runtime
-
-Git hooks now use JavaScript and the verified Node runtime supplied by VS Code.
-No Python or separate Node installation is needed to run the extension. Hooks
-read only the local cache; Garmin polling stays in VS Code every five minutes.
-Readings expire after 60 minutes, and missing readings are omitted from commits.
-
-On activation, existing unmodified Push for Peace hooks in open workspace
-repositories migrate automatically. Open other repositories in VS Code to migrate
-them too. Other tools' hooks and edited hooks are left alone. After a VS Code or
-server update removes its old runtime, reload the extension to refresh the launcher.
-Hooks can run with VS Code closed while that runtime and fresh cache remain available.
-
-Development tests use `npm test`. The release and check workflows build the VSIX
-with inline Bash and `zip`, using the version from `package.json`. Python is no
-longer required for packaging. Run the Release VSIX workflow to publish a build.
