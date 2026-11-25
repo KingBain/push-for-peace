@@ -78,6 +78,6 @@ Garmin credentials are securely stored using VS Code SecretStorage. Health readi
 
 ## Disclaimer
 
-Push for Peace is an experiment in developer well-being, not a medical device or security control. Git hooks can be bypassed.
+Push for Peace is an experiment in developer well-being, not a medical device or security control. Git hooks can be bypassed. This extension has been AI coded, but human reviewed.
 
 **Write code. Stay healthy. Push for peace.**
