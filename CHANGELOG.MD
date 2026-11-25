@@ -4,6 +4,13 @@ Each release lists changes since the previous published version. The Release VSI
 
 <!-- releases -->
 
+## [0.2.14](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.14) — 2026-11-25
+
+- Update README.md ([cf6cfa7](https://github.com/KingBain/push-for-peace/commit/cf6cfa7a7ef8fac0fa78ba6980bf5964cbddb590))
+- Update project title in README.md ([ac687bf](https://github.com/KingBain/push-for-peace/commit/ac687bf53436012b58412082ca28343c67f61d3e))
+- docs: backfill release history and update the changelog on release ([7fc2539](https://github.com/KingBain/push-for-peace/commit/7fc2539c80ef0a5f03218f95cda9a4f278fbfe19))
+- Clarify Garmin credential storage and match exact URLs in updater test ([f7a00e5](https://github.com/KingBain/push-for-peace/commit/f7a00e5a6ea925be0f1581da9c5bbf2302fd8dc2))
+
 ## [0.2.13](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.13) — 2026-11-25
 
 - Removed the Python-only Bandit scan after the JavaScript migration. Bearer now loads a pinned copy of its rules so it can complete the scan and upload findings to GitHub.
