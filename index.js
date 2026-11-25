@@ -2,6 +2,8 @@ const vscode = require('vscode');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { promisify } = require('node:util');
+const {randomBytes, scrypt} = require('node:crypto');
+const deriveModelId = promisify(scrypt);
 const run = promisify(require('node:child_process').execFile);
 
 exports.activate = async context => {
@@ -16,7 +18,11 @@ exports.activate = async context => {
   status.name = 'Push for Peace';
   status.command = 'pushForPeace.refresh';
   context.subscriptions.push(status);
-  const modelKey = 'bodyBatteryModel.v1';
+  const modelKey = 'bodyBatteryModel.v2';
+  // Discard the old unsalted identifier, including when the user is disconnected.
+  if (context.globalState.get('bodyBatteryModel.v1') !== undefined) {
+    await context.globalState.update('bodyBatteryModel.v1', undefined);
+  }
   let current, problem = 'Connect Garmin to load readings.';
   const displayOptions = () => ({
     locale: vscode.env.language,
@@ -55,12 +61,17 @@ exports.activate = async context => {
     const key = await context.secrets.get(secret);
     if (!key) { current = undefined; problem = 'Run Connect Garmin in this VS Code environment first.'; renderStatus(); throw Error(problem); }
     try {
-      const account = require('node:crypto').createHash('sha256').update(key).digest('hex');
       const saved = context.globalState.get(modelKey);
-      const previous = saved?.account === account ? saved.model : undefined;
+      const hasSalt = typeof saved?.salt === 'string' && /^[0-9a-f]{32}$/.test(saved.salt);
+      const salt = hasSalt ? saved.salt : randomBytes(16).toString('hex');
+      const derived = await deriveModelId(key, Buffer.from(salt, 'hex'), 32, {
+        N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024
+      });
+      const account = derived.toString('hex');
+      const previous = hasSalt && saved.account === account ? saved.model : undefined;
       const {batteryModel, ...result} = await require('./garmin').decision(key, previous);
       if (batteryModel.last && JSON.stringify(previous) !== JSON.stringify(batteryModel)) {
-        await context.globalState.update(modelKey, {account, model: batteryModel});
+        await context.globalState.update(modelKey, {salt, account, model: batteryModel});
       }
       const temporary = verdict + '.' + require('node:crypto').randomUUID();
       await fs.writeFile(temporary, JSON.stringify(result), {mode: 0o600, flag: 'wx'});
