@@ -9,7 +9,6 @@ exports.activate = async context => {
   const home = context.globalStorageUri.fsPath;
   const {templates, installRuntime, migrate} = require('./hook-install');
   const {hook, embedHook} = templates(home);
-  const launcher = path.join(home, 'run-hook.sh');
 
   const secret = 'garmin.personalApiKey';
   const verdict = path.join(home, 'verdict.json');
@@ -108,11 +107,7 @@ exports.activate = async context => {
       vscode.window.showInformationMessage('Local key removed. You can also revoke it in Garmin Connect.');
       return;
     }
-    if (['enable', 'enableEmbedding', 'demo'].includes(action)) await installRuntime(context);
-    if (action === 'demo') {
-      vscode.window.showInformationMessage((await run(launcher, ['demo'])).stdout.trim());
-      return;
-    }
+    if (['enable', 'enableEmbedding'].includes(action)) await installRuntime(context);
     const folders = vscode.workspace.workspaceFolders || [];
     const folder = folders.length === 1 ? folders[0] : await vscode.window.showWorkspaceFolderPick();
     if (!folder) return;
@@ -168,7 +163,21 @@ exports.activate = async context => {
     }
     vscode.window.showInformationMessage('Push for Peace guard ' + (action === 'enable' ? 'enabled.' : 'removed.'));
   }
-  for (const action of ['connect', 'enable', 'disable', 'demo', 'disconnect', 'refresh', 'enableEmbedding', 'disableEmbedding']) {
+  context.subscriptions.push(vscode.commands.registerCommand('pushForPeace.demo', async () => {
+    const scenario = await vscode.window.showQuickPick([
+      {label: 'Readings within push limits', allowed: true},
+      {label: 'Readings outside push limits', allowed: false},
+      {label: 'Missing or expired readings', allowed: null}
+    ], {title: 'Push for Peace Demo', placeHolder: 'Choose a simulated push to preview'});
+    if (!scenario) return;
+
+    const now = Date.now();
+    const [code, message] = require('./hooks').check({allowed: scenario.allowed, expires: now + 5000}, now);
+    const preview = 'Demo — ' + message;
+    if (code === 0) vscode.window.showInformationMessage(preview);
+    else vscode.window.showWarningMessage(preview);
+  }));
+  for (const action of ['connect', 'enable', 'disable', 'disconnect', 'refresh', 'enableEmbedding', 'disableEmbedding']) {
     context.subscriptions.push(vscode.commands.registerCommand('pushForPeace.' + action,
       () => queue(() => command(action)).catch(error => vscode.window.showErrorMessage(error.message))));
   }
