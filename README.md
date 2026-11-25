@@ -47,6 +47,21 @@ Request an API key https://connect.garmin.com/app/settings/personalApiToken
 <img width="679" height="315" alt="image" src="https://github.com/user-attachments/assets/3e173f0e-7cb1-418e-afd1-9e71ccbee9b9" />
 
 
+## Body Battery dropouts
+
+The guard uses measured Body Battery for the first hour. During a dropout it estimates
+from the last measurement, initially subtracting 10 percentage points per three hours.
+Starting at 60% at 6 a.m. gives about 50% at 9 a.m. The status bar shows an estimate
+as `~50%`. Hover to see the last measurement and the drain rate. A new Garmin
+measurement replaces the estimate.
+
+After three observed draining intervals of at least 30 minutes each, the extension
+uses your locally learned rate. It skips recharge periods and gaps between samples
+longer than an hour. Estimates assume continued drain and stop 12 hours after the
+last measurement. The guard still requires heart rate less than one hour old and
+Body Battery of at least 25. Commit trailers require two fresh measured readings.
+Disconnecting Garmin clears the local model.
+
 ## Health-Aware Commits
 
 Optionally capture a snapshot of your well-being alongside your code changes.

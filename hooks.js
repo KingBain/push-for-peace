@@ -10,7 +10,34 @@ const affirmations = [
   'You have already done enough to earn a break.',
   "Tomorrow's you is a perfectly qualified reviewer."
 ];
+// Evaluate the same cached measurements at refresh, display, and push time.
+const MAX_ESTIMATE_AGE = 12 * MAX_AGE;
+function evaluateReadings(cache, now = Date.now()) {
+  const {heart, battery, drainRate, learned} = cache;
+  let hr = heart;
+  let bb = battery;
+  if (heart?.status === 'fresh' && now - heart.at >= MAX_AGE) hr = {...heart, status: 'stale'};
+  const age = now - battery?.at;
+  const hasAnchor = Number.isFinite(battery?.value) && battery.value >= 0 && battery.value <= 100 &&
+    Number.isFinite(battery.at) && age >= 0;
+  if (hasAnchor) {
+    if (age < MAX_AGE) bb = {...battery, status: 'fresh'};
+    else if (age < MAX_ESTIMATE_AGE && Number.isFinite(drainRate) && drainRate > 0) {
+      const value = Math.max(0, Math.round(battery.value - drainRate * age / MAX_AGE));
+      bb = {...battery, value, status: 'estimated', measuredValue: battery.value, drainRate, learned};
+    } else bb = {...battery, status: 'stale'};
+  }
+  const diagnostics = {hr, bb};
+  if (hr?.status !== 'fresh' || !Number.isFinite(hr.value) || hr.value < 1 || hr.value > 300 ||
+      !Number.isFinite(hr.at) || hr.at > now || !hasAnchor ||
+      (bb.status !== 'fresh' && bb.status !== 'estimated')) return {diagnostics};
+  const result = {diagnostics, allowed: hr.value >= 50 && hr.value <= 110 && bb.value >= 25,
+    expires: Math.min(hr.at + MAX_AGE, battery.at + (bb.status === 'fresh' ? MAX_AGE : MAX_ESTIMATE_AGE))};
+  if (bb.status === 'fresh') result.health = {hr: hr.value, hrAt: hr.at, bb: bb.value, bbAt: bb.at};
+  return result;
+}
 function check(state, now = Date.now()) {
+  if (state?.readings) state = evaluateReadings(state.readings, now);
   if (!state || !Number.isFinite(state.expires) || state.expires <= now ||
       state.expires > now + MAX_AGE || typeof state.allowed !== 'boolean') {
     return [1, 'Push paused: health readings are missing, invalid, or expired. Click the Push for Peace status-bar item in VS Code to refresh and see details.'];
@@ -76,4 +103,4 @@ if (require.main === module) {
     process.exitCode = 1;
   }
 }
-module.exports = {check, payload, updateMessage, embed};
+module.exports = {MAX_AGE, MAX_ESTIMATE_AGE, evaluateReadings, check, payload, updateMessage, embed};

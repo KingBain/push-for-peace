@@ -58,3 +58,59 @@ test('display timestamps use the selected timezone and daylight saving time', ()
     minute: '2-digit', timeZoneName: 'short'
   }).format(at));
 });
+
+const {evaluateReadings, check, payload} = require('../hooks');
+const {learnBattery} = require('../garmin');
+const hour = 3600000;
+test('a stale battery is projected from its real anchor and never embedded', () => {
+  const at = Date.UTC(2026, 10, 25, 6);
+  const now = at + 3 * hour;
+  const readings = {heart: {status: 'fresh', at: now, value: 72},
+    battery: {at, value: 60}, drainRate: 10/3, learned: false};
+  const result = evaluateReadings(readings, now);
+  assert.equal(result.diagnostics.bb.value, 50);
+  assert.equal(result.diagnostics.bb.status, 'estimated');
+  assert.equal(result.allowed, true);
+  assert.match(describe('Body Battery', result.diagnostics.bb, now), /estimated 50%/);
+  assert.equal(check({readings}, now)[0], 0);
+  assert.equal(payload(result, now), null);
+  assert.equal(check({readings}, now + hour)[0], 1);
+  assert.equal(check({readings: {...readings, battery: {at, value: 30}}}, now)[0], 1);
+  assert.equal(check({readings: {...readings, battery: {at: now - 12 * hour, value: 99}}}, now)[0], 1);
+});
+
+test('learns drain from measured intervals and skips duplicates, recharge and gaps', () => {
+  const at = Date.UTC(2026, 10, 25, 6);
+  const rows = [60, 58, 56, 54].map((v, i) => [at + i * hour / 2, v]);
+  const now = at + 8 * hour;
+  const model = learnBattery({}, rows, now);
+  assert.equal(model.windows, 3);
+  assert.equal(model.points / model.hours, 4);
+  assert.deepEqual(learnBattery(model, rows, now), model);
+  const later = learnBattery(model, [[at + 2 * hour, 64], [now, 40]], now);
+  assert.equal(later.points, model.points);
+  assert.deepEqual(later.last, {value: 40, at: now});
+});
+
+test('battery endpoint dropout uses persisted learning, then resumes measured values', async t => {
+  const at = Date.now(), last = at - 3 * hour;
+  const model = learnBattery({}, [66, 64, 62, 60].map((v, i) => [last - (3-i)*hour/2, v]), at);
+  let restore = false;
+  t.mock.method(global, 'fetch', async (url, options) => {
+    if (options.method === 'POST') return new Response('abc.xyz.sig');
+    if (url.includes('dailyHeartRate')) return Response.json({heartRateValues: [[at, 75]]});
+    if (!restore) return new Response('', {status: 503});
+    return Response.json([{bodyBatteryValuesArray: [[at, 70]]}]);
+  });
+  const missing = await decision('test-key');
+  assert.equal(missing.allowed, undefined);
+  const estimate = await decision('test-key', model);
+  assert.equal(estimate.diagnostics.bb.value, 48);
+  assert.equal(estimate.diagnostics.bb.learned, true);
+  assert.equal(estimate.allowed, true);
+  assert.equal(payload(estimate), null);
+  restore = true;
+  const measured = await decision('test-key', estimate.batteryModel);
+  assert.equal(measured.diagnostics.bb.status, 'fresh');
+  assert.equal(payload(measured).bb, 70);
+});

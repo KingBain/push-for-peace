@@ -16,6 +16,7 @@ exports.activate = async context => {
   status.name = 'Push for Peace';
   status.command = 'pushForPeace.refresh';
   context.subscriptions.push(status);
+  const modelKey = 'bodyBatteryModel.v1';
   let current, problem = 'Connect Garmin to load readings.';
   const displayOptions = () => ({
     locale: vscode.env.language,
@@ -25,12 +26,16 @@ exports.activate = async context => {
     const {describe} = require('./garmin');
     const now = Date.now();
     const fresh = reading => reading?.status === 'fresh' && now - reading.at < 3600000;
-    const hr = current?.diagnostics?.hr, bb = current?.diagnostics?.bb;
+    const view = current?.readings ? require('./hooks').evaluateReadings(current.readings, now) : current;
+    const hr = view?.diagnostics?.hr, bb = view?.diagnostics?.bb;
+    let batteryText = 'BB —';
+    if (fresh(bb)) batteryText = bb.value + '%';
+    if (bb?.status === 'estimated') batteryText = '~' + bb.value + '%';
     status.text = '$(heart) ' + (fresh(hr) ? hr.value + ' bpm' : 'HR —') +
-      '  $(person) ' + (fresh(bb) ? bb.value + '%' : 'BB —');
+      '  $(person) ' + batteryText;
     status.tooltip = 'Push for Peace\n' + (problem ||
       describe('Heart rate', hr, now, displayOptions()) + '\n' + describe('Body Battery', bb, now, displayOptions()) + '\n' +
-      (current.expires > now ? (current.allowed ? 'Within configured push limits.' : 'Outside configured push limits.') : 'Push paused: fresh readings required.')) +
+      (view?.expires > now ? (view.allowed ? 'Within configured push limits.' : 'Outside configured push limits.') : 'Push paused: see reading status above.')) +
       '\nClick to refresh. Readings are from Garmin, not a live watch connection.';
     status.show();
   }
@@ -50,7 +55,13 @@ exports.activate = async context => {
     const key = await context.secrets.get(secret);
     if (!key) { current = undefined; problem = 'Run Connect Garmin in this VS Code environment first.'; renderStatus(); throw Error(problem); }
     try {
-      const result = await require('./garmin').decision(key);
+      const account = require('node:crypto').createHash('sha256').update(key).digest('hex');
+      const saved = context.globalState.get(modelKey);
+      const previous = saved?.account === account ? saved.model : undefined;
+      const {batteryModel, ...result} = await require('./garmin').decision(key, previous);
+      if (batteryModel.last && JSON.stringify(previous) !== JSON.stringify(batteryModel)) {
+        await context.globalState.update(modelKey, {account, model: batteryModel});
+      }
       const temporary = verdict + '.' + require('node:crypto').randomUUID();
       await fs.writeFile(temporary, JSON.stringify(result), {mode: 0o600, flag: 'wx'});
       await fs.rename(temporary, verdict);
@@ -89,6 +100,7 @@ exports.activate = async context => {
         prompt: 'Paste your expiring Garmin Connect Personal API key'});
       if (!key?.trim()) return;
       await fs.rm(verdict, {force: true});
+      if (await context.secrets.get(secret) !== key.trim()) await context.globalState.update(modelKey, undefined);
       await context.secrets.store(secret, key.trim());
       action = 'refresh';
     }
@@ -97,11 +109,12 @@ exports.activate = async context => {
       const details = require('./garmin');
       const message = details.describe('Heart rate', result.diagnostics.hr, Date.now(), displayOptions()) + '; ' + details.describe('Body Battery', result.diagnostics.bb, Date.now(), displayOptions());
       if (result.expires) vscode.window.showInformationMessage('Garmin readings refreshed. ' + message);
-      else vscode.window.showWarningMessage('Garmin responded, but push protection needs both readings less than 60 minutes old. ' + message);
+      else vscode.window.showWarningMessage('Push protection needs a recent heart rate and a measured or estimated Body Battery. ' + message);
       return;
     }
     if (action === 'disconnect') {
       await context.secrets.delete(secret);
+      await context.globalState.update(modelKey, undefined);
       await fs.rm(verdict, {force: true});
       current = undefined; problem = 'Garmin disconnected.'; renderStatus();
       vscode.window.showInformationMessage('Local key removed. You can also revoke it in Garmin Connect.');
