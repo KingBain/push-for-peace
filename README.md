@@ -40,13 +40,16 @@ Not every push needs to be made under stress.
 
 Requires VS Code, Git, and a Garmin Connect account with a Personal API key. Supports macOS, Linux and WSL.
 
-> **Screenshot placeholder — Garmin connection and configuration**
+### Garmin API 
+Request an API key https://connect.garmin.com/app/settings/personalApiToken
+<img width="679" height="315" alt="image" src="https://github.com/user-attachments/assets/3e173f0e-7cb1-418e-afd1-9e71ccbee9b9" />
+
 
 ## Health-Aware Commits
 
 Optionally capture a snapshot of your well-being alongside your code changes.
 
-Enable this feature using **Push for Peace: Enable Health Embedding**.
+Enable this feature using **Push for Peace: Enable Health Embedding**. This will embed your health stats in the git commit message trailer/footer.
 
 <img width="869" height="120" alt="image" src="https://github.com/user-attachments/assets/2f5bcdef-12df-4a41-b428-a8c57339e13b" />
 <img width="868" height="141" alt="image" src="https://github.com/user-attachments/assets/de106a3b-cd4e-408c-a296-2dfd232be44f" />
