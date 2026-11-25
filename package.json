@@ -2,7 +2,7 @@
   "name": "push-for-peace",
   "displayName": "Push for Peace",
   "description": "Push for Peace is a VS Code extension that integrates Garmin health metrics into your Git workflow, encouraging healthier and more mindful software development.",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "publisher": "local-prototypes",
   "engines": {
     "vscode": "^1.85.0"
