@@ -1,4 +1,4 @@
-# Push for Peace
+# Push(git) for Peace
 
 <img width="551" height="138" alt="image" src="https://github.com/user-attachments/assets/45e660ac-a6d3-4429-9206-850b1a842f58" />
 
