@@ -1,7 +1,7 @@
 {
   "name": "push-for-peace",
   "displayName": "Push for Peace",
-  "description": "A Garmin-powered local Git push gate.",
+  "description": "Push for Peace is a VS Code extension that integrates Garmin health metrics into your Git workflow, encouraging healthier and more mindful software development.",
   "version": "0.2.9",
   "publisher": "local-prototypes",
   "engines": {
