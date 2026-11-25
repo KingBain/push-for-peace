@@ -16,15 +16,19 @@ Not every push needs to be made under stress.
 - **Health-aware commits** — Optionally embeds health metrics into your Git commit history.
 - **Update notifications** — Notifies you when a new release is available.
 
+### Push Guard
 <img width="550" height="189" alt="image" src="https://github.com/user-attachments/assets/f11c8f97-5811-4ec7-8869-4cad93cd48fc" />
 
 ### Health Data Synced
+<img width="585" height="137" alt="image" src="https://github.com/user-attachments/assets/d17d05ae-5809-4423-8d38-9234b792ae4d" />
+
+### No Data Available
+<img width="572" height="84" alt="image" src="https://github.com/user-attachments/assets/d7b4c77f-304c-49c3-9995-36cfd5898ec6" />
 
 ### Health Data Stale
 <img width="547" height="209" alt="image" src="https://github.com/user-attachments/assets/f8e5d70c-f9b6-42ef-86ae-60cbb82b1f85" />
 
-### No Data Available
-<img width="572" height="84" alt="image" src="https://github.com/user-attachments/assets/d7b4c77f-304c-49c3-9995-36cfd5898ec6" />
+
 
 
 ## Getting Started
