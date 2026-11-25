@@ -49,11 +49,18 @@ test('manual update installs verified VSIX and cleans up', async () => {
     window:{showInformationMessage:async(message)=>message.includes('available')?'Install Update':undefined,
       showErrorMessage:async(message)=>assert.fail(message),withProgress:async(_,fn)=>fn()}
   };
-  global.fetch=async(url)=>url.includes('api.github.com')?Response.json({
-    tag_name:'v0.2.2',assets:[{name:'push-for-peace-0.2.2.vsix',size:bytes.length,
-    digest:'sha256:'+createHash('sha256').update(bytes).digest('hex'),
-    browser_download_url:'https://github.com/KingBain/push-for-peace/releases/download/v0.2.2/push-for-peace-0.2.2.vsix'}]
-  }):new Response(bytes);
+  const releasesUrl = 'https://api.github.com/repos/KingBain/push-for-peace/releases/latest';
+  const asset = {
+    name: 'push-for-peace-0.2.2.vsix',
+    size: bytes.length,
+    digest: 'sha256:' + createHash('sha256').update(bytes).digest('hex'),
+    browser_download_url: 'https://github.com/KingBain/push-for-peace/releases/download/v0.2.2/push-for-peace-0.2.2.vsix'
+  };
+  global.fetch = async url => {
+    if (url === releasesUrl) return Response.json({ tag_name: 'v0.2.2', assets: [asset] });
+    if (url === asset.browser_download_url) return new Response(bytes);
+    assert.fail('Unexpected update request: ' + url);
+  };
   try {
     activate(context,vscode);
     await command();

@@ -12,7 +12,7 @@ exports.activate = async context => {
   const {templates, installRuntime, migrate} = require('./hook-install');
   const {hook, embedHook} = templates(home);
 
-  const secret = 'garmin.personalApiKey';
+  const garminCredentialStorageKey = 'garmin.personalApiKey';
   const verdict = path.join(home, 'verdict.json');
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   status.name = 'Push for Peace';
@@ -58,7 +58,7 @@ exports.activate = async context => {
     return result;
   }
   async function refresh() {
-    const key = await context.secrets.get(secret);
+    const key = await context.secrets.get(garminCredentialStorageKey);
     if (!key) { current = undefined; problem = 'Run Connect Garmin in this VS Code environment first.'; renderStatus(); throw Error(problem); }
     try {
       const saved = context.globalState.get(modelKey);
@@ -111,8 +111,8 @@ exports.activate = async context => {
         prompt: 'Paste your expiring Garmin Connect Personal API key'});
       if (!key?.trim()) return;
       await fs.rm(verdict, {force: true});
-      if (await context.secrets.get(secret) !== key.trim()) await context.globalState.update(modelKey, undefined);
-      await context.secrets.store(secret, key.trim());
+      if (await context.secrets.get(garminCredentialStorageKey) !== key.trim()) await context.globalState.update(modelKey, undefined);
+      await context.secrets.store(garminCredentialStorageKey, key.trim());
       action = 'refresh';
     }
     if (action === 'refresh') {
@@ -124,7 +124,7 @@ exports.activate = async context => {
       return;
     }
     if (action === 'disconnect') {
-      await context.secrets.delete(secret);
+      await context.secrets.delete(garminCredentialStorageKey);
       await context.globalState.update(modelKey, undefined);
       await fs.rm(verdict, {force: true});
       current = undefined; problem = 'Garmin disconnected.'; renderStatus();
@@ -169,7 +169,7 @@ exports.activate = async context => {
       return;
     }
     if (action === 'enable') {
-      if (!await context.secrets.get(secret)) throw Error('Run Connect Garmin first.');
+      if (!await context.secrets.get(garminCredentialStorageKey)) throw Error('Run Connect Garmin first.');
       await fs.mkdir(path.dirname(target), { recursive: true });
       if (await fs.readFile(target, 'utf8').catch(() => null) === hook) {
         vscode.window.showInformationMessage('Push for Peace guard is enabled.');
