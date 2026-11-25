@@ -1,51 +1,36 @@
 name: Check extension
+
 on:
   pull_request:
   push:
     branches: [main]
+
 permissions:
   contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - run: npm test
+          check-latest: true
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
       - name: Package VSIX
-        shell: bash
-        run: |
-          set -euo pipefail
-          version=$(node -p "require('./package.json').version")
-          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          stage=$(mktemp -d)
-          trap 'rm -rf "$stage"' EXIT
-          mkdir -p "$stage/extension" dist
-          cp package.json index.js garmin.js updates.js hooks.js hook-install.js README.md "$stage/extension/"
-          cp scripts/content-types.xml "$stage/[Content_Types].xml"
-          node - "$stage" <<'NODE'
-          const fs = require('node:fs');
-          const stage = process.argv[2];
-          const pkg = require('./package.json');
-          const readme = fs.readFileSync('README.md', 'utf8');
-          const match = readme.match(/<!-- listing-summary -->\s*([\s\S]*?)\s*<!-- \/listing-summary -->/);
-          const template = fs.readFileSync('scripts/extension.vsixmanifest', 'utf8');
-          if (template.includes('@DESCRIPTION@')) {
-            if (!match || !match[1].trim()) throw Error('Missing listing summary in README.md');
-            pkg.description = match[1].trim().replace(/\s+/g, ' ');
-          }
-          const description = pkg.description.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-          const manifest = template.replace(/(<Identity\b[^>]*? Version=")[^"]*/, (_, prefix) => prefix + pkg.version)
-            .replace('@DESCRIPTION@', () => description);
-          fs.writeFileSync(stage + '/extension/package.json', JSON.stringify(pkg, null, 2) + '\n');
-          fs.writeFileSync(stage + '/extension.vsixmanifest', manifest);
-          NODE
-          grep -Fq "Id=\"push-for-peace\" Version=\"$version\"" "$stage/extension.vsixmanifest"
-          archive="$PWD/dist/push-for-peace-$version.vsix"
-          rm -f "$archive"
-          (cd "$stage" && zip -q -r "$archive" extension.vsixmanifest '[Content_Types].xml' extension)
-          unzip -tq "$archive"
+        run: npm run package
+
+      - name: Validate VSIX
+        run: unzip -tq dist/*.vsix
