@@ -82,6 +82,33 @@ jobs:
             echo "existing=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Update changelog for new release
+        if: steps.version.outputs.existing == 'false'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous=$(git describe --tags --first-parent --abbrev=0 --match 'v[0-9]*' HEAD)
+          git log --first-parent --reverse --format="- %s ([%h]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/%H))" "$previous..HEAD" > "$RUNNER_TEMP/changes.md"
+          if [[ ! -s "$RUNNER_TEMP/changes.md" ]]; then
+            echo '- Repackaged the extension from the previous release.' > "$RUNNER_TEMP/changes.md"
+          fi
+          node - "$RUNNER_TEMP/changes.md" <<'NODE'
+          const fs = require('node:fs');
+          const file = 'CHANGELOG.MD';
+          const history = fs.readFileSync(file, 'utf8');
+          const marker = '<!-- releases -->';
+          if (history.split(marker).length !== 2) throw Error('Expected one changelog insertion marker');
+          const tag = process.env.RELEASE_TAG;
+          const date = new Date().toISOString().slice(0, 10);
+          const url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/releases/tag/' + tag;
+          const heading = '## [' + tag.slice(1) + '](' + url + ')';
+          if (history.includes(heading)) throw Error('Changelog already contains ' + tag);
+          const notes = fs.readFileSync(process.argv[2], 'utf8').trimEnd();
+          fs.writeFileSync(file, history.replace(marker, () => marker + '\n\n' + heading + ' — ' + date + '\n\n' + notes));
+          NODE
+
       - run: npm test
       - name: Package VSIX
         shell: bash
@@ -124,7 +151,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json
+          git add package.json CHANGELOG.MD
           if ! git diff --cached --quiet; then
             git commit -m "chore: release $RELEASE_TAG"
           fi

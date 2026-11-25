@@ -1,0 +1,64 @@
+# Changelog
+
+Each release lists changes since the previous published version. The Release VSIX workflow adds a dated entry from commits on `main` when it creates a new release tag.
+
+<!-- releases -->
+
+## [0.2.13](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.13) — 2026-11-25
+
+- Removed the Python-only Bandit scan after the JavaScript migration. Bearer now loads a pinned copy of its rules so it can complete the scan and upload findings to GitHub.
+
+## [0.2.12](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.12) — 2026-11-25
+
+- Replaced the SHA-256 fingerprint used to associate a Garmin key with a Body Battery model with salted scrypt. On upgrade, the extension discards the old fingerprint and rebuilds the model from Garmin readings.
+
+## [0.2.11](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.11) — 2026-11-25
+
+- Added Body Battery estimates during sync gaps. After an hour, the status bar marks estimates with `~`. The initial rate is 10 points per three hours and adapts after three observed drain intervals.
+- Push protection can use an estimate for up to 12 hours after the last measurement and still requires a fresh heart rate. Commit trailers use fresh measurements only.
+
+## [0.2.10](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.10) — 2026-11-25
+
+- The extension listing takes its short description from the README. The Details page includes the full README and screenshots of the guard and reading states.
+
+## [0.2.9](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.9) — 2026-11-25
+
+- Fixed the Demo command showing three conflicting outcomes in one notification. Choose a scenario to preview a single approval or pause message.
+
+## [0.2.8](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.8) — 2026-11-25
+
+- Rewrote the Git hooks in JavaScript. They use the verified VS Code runtime and work from a terminal without a separate Python or Node installation. Opening a repository migrates its unmodified Push for Peace hooks.
+- Moved VSIX packaging into the check and release workflows using Bash and ZIP, removing the remaining Python build dependency.
+
+## [0.2.7](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.7) — 2026-11-24
+
+- Notifications and tooltips show sample times with a local date and timezone. The `pushForPeace.displayTimeZone` user setting lets dev-container and remote users choose their timezone.
+
+## [0.2.6](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.6) — 2026-11-24
+
+- Extended reading freshness from 30 to 60 minutes across the push guard, status bar and commit trailers. Background polling stays at five minutes.
+- Added Bearer and Bandit code scanning.
+
+## [0.2.5](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.5) — 2026-11-23
+
+- Changed the Body Battery status-bar icon to a person so it is easier to distinguish from heart rate.
+
+## [0.2.4](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.4) — 2026-11-23
+
+- Added a clickable status-bar display for heart rate and Body Battery. Refresh messages and tooltips identify missing, stale, unreadable and future-dated samples.
+- Fixed a guard crash in minimal Python installations and added a dependency check before enabling the hooks.
+
+## [0.2.3](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.3) — 2026-11-23
+
+- Added optional `Push-For-Peace` commit trailers with cached heart rate and Body Battery. Enabling embedding warns that these readings become part of Git history. Amending a commit updates the trailer or removes it if readings are unavailable.
+
+## [0.2.2](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.2) — 2026-11-23
+
+- Added daily and manual GitHub release checks. Local VS Code installs can download and verify a VSIX update. Remote users receive a manual installation option.
+- Added automatic patch, minor and major version increments to the manual release workflow.
+
+## [0.2.1](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.1) — 2026-11-23
+
+- First published GitHub release. Connect Garmin with a Personal API key stored in VS Code SecretStorage. The extension polls every five minutes and caches a verdict for the repository’s pre-push hook.
+- Pushes require readings less than 30 minutes old, heart rate from 50 to 110 bpm, and Body Battery of at least 25. An out-of-range push gets a pause message and a random affirmation.
+- Added automated checks and a manual workflow to package the VSIX, manage the version and tag, and publish to GitHub Releases.
