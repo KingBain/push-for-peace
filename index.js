@@ -205,4 +205,5 @@ exports.activate = async context => {
     context.subscriptions.push(vscode.commands.registerCommand('pushForPeace.' + action,
       () => queue(() => command(action)).catch(error => vscode.window.showErrorMessage(error.message))));
   }
+  await require('./push-errors').registerPushErrors(context, vscode);
 };

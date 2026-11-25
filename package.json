@@ -94,6 +94,7 @@
     "updates.js",
     "hooks.js",
     "hook-install.js",
+    "push-errors.js",
     "README.md",
     "CHANGELOG.MD",
     "LICENSE.md"

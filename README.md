@@ -19,6 +19,8 @@ Not every push needs to be made under stress.
 - **Update notifications** — Notifies you when a new release is available.
 
 ### Push Guard
+When the guard pauses a push in VS Code, it shows the reason. Choose **Refresh Readings** if the cached readings are unavailable, then retry the push when you’re ready.
+
 <img width="550" height="189" alt="image" src="https://github.com/user-attachments/assets/f11c8f97-5811-4ec7-8869-4cad93cd48fc" />
 
 ### Health Data Synced

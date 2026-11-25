@@ -4,6 +4,10 @@ const path = require('node:path');
 const {execFileSync} = require('node:child_process');
 const {randomInt} = require('node:crypto');
 const MAX_AGE = 3600000;
+const pauseMarkers = {
+  unavailable: '[push-for-peace:readings-unavailable]',
+  outside: '[push-for-peace:outside-limits]'
+};
 const affirmations = [
   'You are allowed to call it a day with a green build.',
   'Your worth is independent of your contribution graph.',
@@ -40,10 +44,10 @@ function check(state, now = Date.now()) {
   if (state?.readings) state = evaluateReadings(state.readings, now);
   if (!state || !Number.isFinite(state.expires) || state.expires <= now ||
       state.expires > now + MAX_AGE || typeof state.allowed !== 'boolean') {
-    return [1, 'Push paused: health readings are missing, invalid, or expired. Click the Push for Peace status-bar item in VS Code to refresh and see details.'];
+    return [1, 'Push paused: health readings are missing, invalid, or expired. Click the Push for Peace status-bar item in VS Code to refresh and see details.', pauseMarkers.unavailable];
   }
   return state.allowed ? [0, 'Push approved. May your diff be small.'] :
-    [1, 'Push paused. Please, choose peace. The branch can wait. ' + affirmations[randomInt(affirmations.length)]];
+    [1, 'Push paused. Please, choose peace. The branch can wait. ' + affirmations[randomInt(affirmations.length)], pauseMarkers.outside];
 }
 function payload(state, now = Date.now()) {
   const h = state?.health;
@@ -95,12 +99,13 @@ if (require.main === module) {
       if (!process.argv[3]) throw Error('Missing message file');
       embed(process.argv[3]);
     } else if (process.argv[2] === 'check') {
-      const [code, message] = check(readState(__dirname));
-      console.error(message); process.exitCode = code;
+      const [code, message, marker] = check(readState(__dirname));
+      console.error(marker ? marker + ' ' + message : message);
+      process.exitCode = code;
     } else throw Error('Unknown hook command');
   } catch {
     console.error('Push for Peace could not run its local Git hook. Reload VS Code to repair the runtime, then retry.');
     process.exitCode = 1;
   }
 }
-module.exports = {MAX_AGE, MAX_ESTIMATE_AGE, evaluateReadings, check, payload, updateMessage, embed};
+module.exports = {pauseMarkers, MAX_AGE, MAX_ESTIMATE_AGE, evaluateReadings, check, payload, updateMessage, embed};

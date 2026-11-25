@@ -15,6 +15,7 @@ test('model identifiers survive refresh and isolate credentials across upgrades 
   let key = 'fixture-a', input;
   const disposable = {dispose() {}};
   const vscode = {
+    extensions: {getExtension: () => undefined},
     env: {language: 'en'}, StatusBarAlignment: {Left: 1},
     window: {
       createStatusBarItem: () => ({show() {}, dispose() {}}),
