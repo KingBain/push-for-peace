@@ -2,7 +2,7 @@
 
 Each release lists changes since the previous published version. The Release VSIX workflow adds a dated entry from commits on `main` when it creates a new release tag.
 
-<!-- releases -->
+<!-- auto-changelog-above -->
 
 ## [0.2.14](https://github.com/KingBain/push-for-peace/releases/tag/v0.2.14) — 2026-11-25
 

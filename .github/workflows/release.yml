@@ -10,7 +10,7 @@ on:
         type: choice
         options: [patch, minor, major]
       version:
-        description: 'Optional exact version override, or version to resume'
+        description: Optional exact version override
         required: false
         type: string
 
@@ -25,155 +25,46 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      RELEASE_BUMP: ${{ inputs.bump }}
-      RELEASE_VERSION_INPUT: ${{ inputs.version }}
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          ref: main
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          check-latest: true
+          cache: npm
 
-      - name: Prepare release version
-        id: version
-        run: |
-          version="${RELEASE_VERSION_INPUT#v}"
-          if [[ -z "$version" ]]; then
-            retry_tag=$(git for-each-ref --format='%(refname:short) %(contents:subject)' refs/tags | awk -v run="$GITHUB_RUN_ID" '$0 == $1 " Push for Peace release run " run {print $1}')
-            if [[ -n "$retry_tag" ]]; then
-              version="${retry_tag#v}"
-            else
-              version=$(node -e '
-                const parts = require("./package.json").version.split(".").map(Number);
-                const index = ["major", "minor", "patch"].indexOf(process.env.RELEASE_BUMP);
-                if (index < 0 || parts.length !== 3 || !parts.every(Number.isSafeInteger)) process.exit(1);
-                parts[index]++;
-                parts.fill(0, index + 1);
-                console.log(parts.join("."));
-              ')
-            fi
-          fi
-          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-            echo "::error::Enter a version such as 1.0.1."
-            exit 1
-          fi
-          tag="v$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if git show-ref --verify --quiet "refs/tags/$tag"; then
-            git merge-base --is-ancestor "$tag" origin/main
-            git checkout --detach "$tag"
-            actual=$(node -p "require('./package.json').version")
-            if [[ "$actual" != "$version" ]]; then
-              echo "::error::Tag $tag already exists with package version $actual. Choose a new version."
-              exit 1
-            fi
-            echo "existing=true" >> "$GITHUB_OUTPUT"
-          else
-            npm version "$version" --no-git-tag-version --allow-same-version
-            echo "existing=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Update changelog for new release
-        if: steps.version.outputs.existing == 'false'
-        env:
-          RELEASE_TAG: ${{ steps.version.outputs.tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          previous=$(git describe --tags --first-parent --abbrev=0 --match 'v[0-9]*' HEAD)
-          git log --first-parent --reverse --format="- %s ([%h]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/%H))" "$previous..HEAD" > "$RUNNER_TEMP/changes.md"
-          if [[ ! -s "$RUNNER_TEMP/changes.md" ]]; then
-            echo '- Repackaged the extension from the previous release.' > "$RUNNER_TEMP/changes.md"
-          fi
-          node - "$RUNNER_TEMP/changes.md" <<'NODE'
-          const fs = require('node:fs');
-          const file = 'CHANGELOG.MD';
-          const history = fs.readFileSync(file, 'utf8');
-          const marker = '<!-- releases -->';
-          if (history.split(marker).length !== 2) throw Error('Expected one changelog insertion marker');
-          const tag = process.env.RELEASE_TAG;
-          const date = new Date().toISOString().slice(0, 10);
-          const url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/releases/tag/' + tag;
-          const heading = '## [' + tag.slice(1) + '](' + url + ')';
-          if (history.includes(heading)) throw Error('Changelog already contains ' + tag);
-          const notes = fs.readFileSync(process.argv[2], 'utf8').trimEnd();
-          fs.writeFileSync(file, history.replace(marker, () => marker + '\n\n' + heading + ' — ' + date + '\n\n' + notes));
-          NODE
-
-      - run: npm test
-      - name: Package VSIX
-        shell: bash
-        run: |
-          set -euo pipefail
-          version=$(node -p "require('./package.json').version")
-          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          stage=$(mktemp -d)
-          trap 'rm -rf "$stage"' EXIT
-          mkdir -p "$stage/extension" dist
-          cp package.json index.js garmin.js updates.js hooks.js hook-install.js README.md "$stage/extension/"
-          cp scripts/content-types.xml "$stage/[Content_Types].xml"
-          node - "$stage" <<'NODE'
-          const fs = require('node:fs');
-          const stage = process.argv[2];
-          const pkg = require('./package.json');
-          const readme = fs.readFileSync('README.md', 'utf8');
-          const match = readme.match(/<!-- listing-summary -->\s*([\s\S]*?)\s*<!-- \/listing-summary -->/);
-          const template = fs.readFileSync('scripts/extension.vsixmanifest', 'utf8');
-          if (template.includes('@DESCRIPTION@')) {
-            if (!match || !match[1].trim()) throw Error('Missing listing summary in README.md');
-            pkg.description = match[1].trim().replace(/\s+/g, ' ');
-          }
-          const description = pkg.description.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-          const manifest = template.replace(/(<Identity\b[^>]*? Version=")[^"]*/, (_, prefix) => prefix + pkg.version)
-            .replace('@DESCRIPTION@', () => description);
-          fs.writeFileSync(stage + '/extension/package.json', JSON.stringify(pkg, null, 2) + '\n');
-          fs.writeFileSync(stage + '/extension.vsixmanifest', manifest);
-          NODE
-          grep -Fq "Id=\"push-for-peace\" Version=\"$version\"" "$stage/extension.vsixmanifest"
-          archive="$PWD/dist/push-for-peace-$version.vsix"
-          rm -f "$archive"
-          (cd "$stage" && zip -q -r "$archive" extension.vsixmanifest '[Content_Types].xml' extension)
-          unzip -tq "$archive"
-
-      - name: Commit version and create tag
-        if: steps.version.outputs.existing == 'false'
-        env:
-          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json CHANGELOG.MD
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: release $RELEASE_TAG"
-          fi
-          git tag -a "$RELEASE_TAG" -m "Push for Peace release run $GITHUB_RUN_ID"
-          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-          echo "::add-mask::$auth"
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push --atomic origin HEAD:refs/heads/main "refs/tags/$RELEASE_TAG"
 
-      - name: Publish release
+      - name: Release
         env:
-          RELEASE_TAG: ${{ steps.version.outputs.tag }}
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BUMP: ${{ inputs.bump }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          releases=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases")
-          state=$(jq -r --arg tag "$RELEASE_TAG" '.[] | select(.tag_name == $tag) | if .draft then "draft" else "published" end' <<< "$releases")
-          if [[ "$state" == "published" ]]; then
-            gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fx "push-for-peace-$RELEASE_VERSION.vsix"
-            echo "Release $RELEASE_TAG is already published."
-            exit 0
+          gh auth setup-git
+
+          version="${RELEASE_VERSION#v}"
+
+          if [[ -n "$version" ]]; then
+            if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::Invalid release version"
+              exit 1
+            fi
           fi
-          if [[ -z "$state" ]]; then
-            gh release create "$RELEASE_TAG" --verify-tag --generate-notes --draft
-          fi
-          gh release upload "$RELEASE_TAG" "dist/push-for-peace-$RELEASE_VERSION.vsix" --clobber
-          gh release edit "$RELEASE_TAG" --draft=false
+
+          npm run release -- "${version:-$RELEASE_BUMP}" --ci
